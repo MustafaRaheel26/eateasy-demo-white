@@ -34,7 +34,7 @@ interface LogoProps {
 }
 
 const Logo = ({ className = "", variant = "header", color }: LogoProps) => {
-  const sizeClass = "h-24 md:h-28 w-auto object-contain";
+  const sizeClass = "h-16 sm:h-20 md:h-28 w-auto object-contain";
 
   if (variant === "header") {
     const src = color ? `/logo-${color}.png` : "/logo-blue.png";
@@ -84,7 +84,7 @@ const AdvancedHamburger = ({
 }) => (
   <button
     onClick={onClick}
-    className="relative w-10 h-10 flex flex-col justify-center items-center gap-1.5 z-50 group"
+    className="relative w-12 h-12 flex flex-col justify-center items-center gap-1.5 z-50 group -mr-3"
   >
     <motion.span
       animate={isOpen ? { rotate: 45, y: 8 } : { rotate: 0, y: 0 }}
@@ -120,11 +120,14 @@ const Header = () => {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? "bg-white border-b-2 border-slate-900 py-3" : "bg-transparent py-5"}`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 overflow-visible ${isScrolled ? "bg-white border-b-2 border-slate-900 pt-3 pb-6 sm:pt-4 sm:pb-8" : "bg-transparent py-5"}`}
     >
-      <div className="max-w-7xl mx-auto px-6 md:px-12 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-12 flex items-center justify-between gap-4 sm:gap-0">
         {/* add a little extra top padding so the logo isn't pressed against the edge */}
-        <Logo variant="header" className="pt-2" />
+        <Logo
+          variant="header"
+          className={`w-auto mb-1 sm:mb-2 transition-all duration-300 ${isScrolled ? "h-12 sm:h-16 md:h-20" : "h-16 sm:h-20 md:h-24"}`}
+        />
 
         <nav className="hidden lg:flex items-center gap-12">
           {navLinks.map((link) => (
@@ -328,7 +331,12 @@ const DishCard = ({
   key?: React.Key;
 }) => (
   <motion.div
-    whileHover={{ x: 10 }}
+    initial={{ opacity: 0, y: 20 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ duration: 0.5 }}
+    whileHover={{ x: 10, scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
     onClick={onClick}
     className="group cursor-pointer border-2 border-slate-900 p-4 hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] transition-all bg-white"
   >
@@ -358,25 +366,25 @@ const DishModal = ({ dish, onClose }: { dish: Dish; onClose: () => void }) => (
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     exit={{ opacity: 0 }}
-    className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-white/90 backdrop-blur-sm"
+    className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-white/90 backdrop-blur-sm overflow-y-auto"
     onClick={onClose}
   >
     <motion.div
       initial={{ scale: 0.9, y: 20, opacity: 0 }}
       animate={{ scale: 1, y: 0, opacity: 1 }}
       exit={{ scale: 0.9, y: 20, opacity: 0 }}
-      className="bg-white border-4 border-slate-900 p-8 md:p-12 max-w-4xl w-full relative shadow-[20px_20px_0px_0px_rgba(0,0,0,1)]"
+      className="bg-white border-2 sm:border-4 border-slate-900 p-4 sm:p-8 md:p-12 max-w-4xl w-full relative shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] sm:shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] my-8"
       onClick={(e) => e.stopPropagation()}
     >
       <button
         onClick={onClose}
-        className="absolute top-6 right-6 text-slate-900 hover:rotate-90 transition-transform duration-300"
+        className="absolute top-3 right-3 sm:top-6 sm:right-6 text-slate-900 hover:rotate-90 transition-transform duration-300 bg-white border border-slate-900 p-1 sm:p-2 z-10"
       >
-        <X size={32} />
+        <X size={24} className="sm:w-8 sm:h-8" />
       </button>
 
-      <div className="grid md:grid-cols-2 gap-12 items-center">
-        <div className="border-4 border-slate-900 aspect-square overflow-hidden">
+      <div className="grid md:grid-cols-2 gap-6 sm:gap-8 md:gap-12 items-start md:items-center">
+        <div className="border-2 sm:border-4 border-slate-900 aspect-square overflow-hidden">
           <img
             src={dish.image}
             alt={dish.name}
@@ -384,23 +392,23 @@ const DishModal = ({ dish, onClose }: { dish: Dish; onClose: () => void }) => (
             referrerPolicy="no-referrer"
           />
         </div>
-        <div>
-          <span className="text-[10px] uppercase tracking-[0.5em] font-black text-slate-400 mb-4 block">
+        <div className="pt-4 sm:pt-0">
+          <span className="text-[8px] sm:text-[10px] uppercase tracking-[0.3em] sm:tracking-[0.5em] font-black text-slate-400 mb-2 sm:mb-4 block">
             // Premium Selection
           </span>
-          <h2 className="text-5xl md:text-7xl font-serif text-slate-900 mb-8 leading-none">
+          <h2 className="text-3xl sm:text-5xl md:text-7xl font-serif text-slate-900 mb-4 sm:mb-8 leading-tight">
             {dish.name}
           </h2>
-          <p className="text-lg text-slate-600 mb-10 leading-relaxed font-medium border-l-4 border-slate-900 pl-6">
+          <p className="text-xs sm:text-sm md:text-lg text-slate-600 mb-6 sm:mb-10 leading-relaxed font-medium border-l-2 sm:border-l-4 border-slate-900 pl-3 sm:pl-6">
             {dish.description} This dish is prepared fresh daily using locally
             sourced ingredients, ensuring a restaurant-quality experience right
             in your office.
           </p>
-          <div className="flex flex-wrap gap-6">
-            <div className="px-4 py-2 border-2 border-slate-900 font-black text-[10px] uppercase tracking-widest">
+          <div className="flex flex-wrap gap-2 sm:gap-6">
+            <div className="px-2 sm:px-4 py-1 sm:py-2 border border-slate-900 sm:border-2 font-black text-[7px] sm:text-[10px] uppercase tracking-widest">
               Fresh Daily
             </div>
-            <div className="px-4 py-2 border-2 border-slate-900 font-black text-[10px] uppercase tracking-widest">
+            <div className="px-2 sm:px-4 py-1 sm:py-2 border border-slate-900 sm:border-2 font-black text-[7px] sm:text-[10px] uppercase tracking-widest">
               Chef Curated
             </div>
           </div>
@@ -565,10 +573,14 @@ const Pricing = () => {
     >
       <div className="max-w-7xl mx-auto px-6 md:px-12">
         <div className="grid lg:grid-cols-2 gap-0 border-2 border-slate-900">
-          <div className="p-16 border-b-2 lg:border-b-0 lg:border-r-2 border-slate-900 hover:bg-slate-50 transition-all">
-            <div className="flex justify-between items-start mb-16">
+          <motion.div
+            whileHover={{ scale: 1.03 }}
+            transition={{ duration: 0.3 }}
+            className="p-8 sm:p-12 md:p-16 border-b-2 lg:border-b-0 lg:border-r-2 border-slate-900 hover:bg-slate-50 transition-all"
+          >
+            <div className="flex flex-col sm:flex-row justify-between items-start mb-16 gap-8">
               <div>
-                <h3 className="text-4xl font-serif text-slate-900 mb-4">
+                <h3 className="text-3xl sm:text-4xl font-serif text-slate-900 mb-4 whitespace-nowrap">
                   Plant Based
                 </h3>
                 <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black">
@@ -576,7 +588,7 @@ const Pricing = () => {
                 </p>
               </div>
               <div className="text-right">
-                <span className="text-5xl font-serif text-slate-900">
+                <span className="text-4xl sm:text-5xl font-serif text-slate-900">
                   $16.49
                 </span>
                 <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">
@@ -606,12 +618,16 @@ const Pricing = () => {
             >
               Select Plan
             </a>
-          </div>
+          </motion.div>
 
-          <div className="p-16 bg-slate-900 text-white hover:bg-black transition-all">
+          <motion.div
+            whileHover={{ scale: 1.03 }}
+            transition={{ duration: 0.3 }}
+            className="p-8 sm:p-12 md:p-16 bg-slate-900 text-white hover:bg-black transition-all"
+          >
             <div className="flex flex-col sm:flex-row justify-between items-start mb-16 gap-8">
               <div>
-                <h3 className="text-4xl font-serif mb-4 whitespace-nowrap">
+                <h3 className="text-3xl sm:text-4xl font-serif mb-4 whitespace-nowrap">
                   Signature
                 </h3>
                 <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black">
@@ -619,7 +635,7 @@ const Pricing = () => {
                 </p>
               </div>
               <div className="text-right">
-                <span className="text-5xl font-serif">$18.99</span>
+                <span className="text-4xl sm:text-5xl font-serif">$18.99</span>
                 <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">
                   Per Meal
                 </p>
@@ -647,7 +663,7 @@ const Pricing = () => {
             >
               Select Plan
             </a>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>
@@ -667,8 +683,16 @@ const SubscriptionForm = () => {
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
+  const validateEmail = (email: string) => {
+    return email.includes("@") && email.includes(".");
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateEmail(formData.email)) {
+      setError("Please enter a valid email address with @ symbol.");
+      return;
+    }
     if (parseInt(formData.employees) < 10) {
       setError("Minimum 10 employees required.");
       return;
@@ -761,10 +785,9 @@ const SubscriptionForm = () => {
             >
               <div className="space-y-4">
                 <label className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">
-                  Office Name
+                  Office Name <span className="text-slate-300">(Optional)</span>
                 </label>
                 <input
-                  required
                   type="text"
                   className="w-full bg-transparent border-b-2 border-slate-200 py-4 focus:border-slate-900 outline-none transition-colors font-bold text-slate-900"
                   value={formData.officeName}
@@ -956,17 +979,22 @@ const FAQ = () => {
 
 const Footer = () => {
   return (
-    <footer className="py-24 bg-slate-900 text-white border-t-4 border-black">
-      <div className="max-w-7xl mx-auto px-6 md:px-12">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-16">
-          <div className="text-center md:text-left">
-            <Logo variant="footer" className="text-slate-500" />
-            <p className="text-[10px] uppercase tracking-[0.6em] text-slate-500 mt-6 font-black">
-              Work hard lunch easy
-            </p>
+    <footer className="py-16 sm:py-24 bg-slate-900 text-white border-t-4 border-black">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-12">
+        <div className="flex flex-col gap-10 md:gap-16">
+          <div className="flex items-center justify-center md:justify-start">
+            <div className="text-center md:text-left">
+              <Logo
+                variant="footer"
+                className="text-slate-500 w-24 sm:w-28 md:w-32 h-auto mx-auto md:mx-0"
+              />
+              <p className="text-[8px] sm:text-[10px] uppercase tracking-[0.4em] sm:tracking-[0.6em] text-slate-500 mt-4 font-black">
+                Work hard lunch easy
+              </p>
+            </div>
           </div>
 
-          <div className="flex flex-col items-center md:items-end gap-10">
+          <div className="flex flex-col items-center md:items-end gap-8 md:gap-10">
             <div className="flex gap-12">
               <a
                 href="https://instagram.com/eateasycanada"
