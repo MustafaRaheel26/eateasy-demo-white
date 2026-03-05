@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   ChefHat,
@@ -14,7 +14,14 @@ import {
   Facebook,
   Linkedin,
   X,
+  AlertCircle,
+  CheckCircle,
+  Loader,
 } from "lucide-react";
+import emailjs from "@emailjs/browser";
+
+// Initialize EmailJS
+emailjs.init(import.meta.env.VITE_EMAIL_PUBLIC_KEY);
 
 // --- Types ---
 interface Dish {
@@ -671,63 +678,120 @@ const Pricing = () => {
 };
 
 const SubscriptionForm = () => {
-  const [formData, setFormData] = useState({
-    officeName: "",
-    contactName: "",
-    email: "",
-    phone: "",
-    employees: "",
-    plan: "signature",
+  const formRef = useRef<HTMLFormElement>(null);
+  const [formStatus, setFormStatus] = useState<{
+    type: "idle" | "loading" | "success" | "error";
+    message: string;
+  }>({
+    type: "idle",
     message: "",
   });
-  const [error, setError] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [formData, setFormData] = useState({
+    contact_name: "",
+    office_name: "",
+    work_email: "",
+    phone: "",
+    team_size: "",
+    preferred_plan: "Plant Based $14.99",
+    message: "",
+  });
 
-  const validateEmail = (email: string) => {
-    return email.includes("@") && email.includes(".");
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!validateEmail(formData.email)) {
-      setError("Please enter a valid email address with @ symbol.");
-      return;
-    }
-    if (parseInt(formData.employees) < 10) {
-      setError("Minimum 10 employees required.");
-      return;
-    }
-    setError("");
-    setSubmitted(true);
-  };
 
-  if (submitted) {
-    return (
-      <section id="subscribe" className="py-32 bg-white">
-        <div className="max-w-3xl mx-auto px-6 text-center">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="card-edgy p-20"
-          >
-            <h2 className="text-5xl font-serif text-slate-900 mb-10">
-              Inquiry Received.
-            </h2>
-            <p className="text-slate-500 font-bold uppercase tracking-widest text-xs mb-12 leading-loose">
-              Our concierge will contact you within 24 hours to discuss your
-              office's specific requirements.
-            </p>
-            <button
-              onClick={() => setSubmitted(false)}
-              className="text-[10px] uppercase tracking-[0.5em] font-black text-slate-900 border-b-4 border-slate-900 pb-2"
-            >
-              Back to form
-            </button>
-          </motion.div>
-        </div>
-      </section>
-    );
-  }
+    // Validation
+    if (
+      !formData.contact_name ||
+      !formData.work_email ||
+      !formData.office_name ||
+      !formData.phone ||
+      !formData.team_size ||
+      !formData.preferred_plan
+    ) {
+      setFormStatus({
+        type: "error",
+        message: "Please fill in all required fields",
+      });
+      return;
+    }
+
+    setFormStatus({
+      type: "loading",
+      message: "Sending your subscription request...",
+    });
+
+    try {
+      if (!formRef.current) {
+        throw new Error("Form reference not found");
+      }
+
+      const response = await emailjs.sendForm(
+        import.meta.env.VITE_EMAIL_SERVICE_ID,
+        import.meta.env.VITE_EMAIL_TEMPLATE_ID,
+        formRef.current,
+        import.meta.env.VITE_EMAIL_PUBLIC_KEY,
+      );
+
+      if (response.status === 200) {
+        setFormStatus({
+          type: "success",
+          message: "Subscription request sent successfully!",
+        });
+
+        // Clear form
+        setFormData({
+          contact_name: "",
+          office_name: "",
+          work_email: "",
+          phone: "",
+          team_size: "",
+          preferred_plan: "Plant Based $14.99",
+          message: "",
+        });
+
+        if (formRef.current) {
+          formRef.current.reset();
+        }
+
+        // Clear success message after 5 seconds
+        setTimeout(() => {
+          setFormStatus({
+            type: "idle",
+            message: "",
+          });
+        }, 5000);
+      }
+    } catch (error) {
+      console.error("EmailJS Error:", error);
+      setFormStatus({
+        type: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to send subscription request. Please try again.",
+      });
+
+      // Clear error message after 5 seconds
+      setTimeout(() => {
+        setFormStatus({
+          type: "idle",
+          message: "",
+        });
+      }, 5000);
+    }
+  };
 
   return (
     <section
@@ -779,121 +843,205 @@ const SubscriptionForm = () => {
           </div>
 
           <div className="lg:col-span-7 card-edgy">
+            {/* Status Messages */}
+            {formStatus.type !== "idle" && (
+              <div
+                className={`p-6 mb-6 border-l-4 ${
+                  formStatus.type === "success"
+                    ? "bg-emerald-50 border-emerald-500"
+                    : formStatus.type === "error"
+                      ? "bg-red-50 border-red-500"
+                      : "bg-blue-50 border-blue-500"
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0">
+                    {formStatus.type === "success" && (
+                      <CheckCircle className="w-6 h-6 text-emerald-600" />
+                    )}
+                    {formStatus.type === "error" && (
+                      <AlertCircle className="w-6 h-6 text-red-600" />
+                    )}
+                    {formStatus.type === "loading" && (
+                      <Loader className="w-6 h-6 text-blue-600 animate-spin" />
+                    )}
+                  </div>
+                  <div>
+                    <p
+                      className={`font-black text-sm ${
+                        formStatus.type === "success"
+                          ? "text-emerald-900"
+                          : formStatus.type === "error"
+                            ? "text-red-900"
+                            : "text-blue-900"
+                      }`}
+                    >
+                      {formStatus.type === "success"
+                        ? "Success!"
+                        : formStatus.type === "error"
+                          ? "Error"
+                          : "Processing..."}
+                    </p>
+                    <p
+                      className={`text-xs font-medium ${
+                        formStatus.type === "success"
+                          ? "text-emerald-700"
+                          : formStatus.type === "error"
+                            ? "text-red-700"
+                            : "text-blue-700"
+                      }`}
+                    >
+                      {formStatus.message}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <form
+              ref={formRef}
               onSubmit={handleSubmit}
               className="grid md:grid-cols-2 gap-12"
             >
-              <div className="space-y-4">
-                <label className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">
-                  Office Name <span className="text-slate-300">(Optional)</span>
-                </label>
-                <input
-                  type="text"
-                  className="w-full bg-transparent border-b-2 border-slate-200 py-4 focus:border-slate-900 outline-none transition-colors font-bold text-slate-900"
-                  value={formData.officeName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, officeName: e.target.value })
-                  }
-                />
-              </div>
+              {/* Contact Name */}
               <div className="space-y-4">
                 <label className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">
                   Contact Name
                 </label>
                 <input
-                  required
                   type="text"
+                  name="contact_name"
                   className="w-full bg-transparent border-b-2 border-slate-200 py-4 focus:border-slate-900 outline-none transition-colors font-bold text-slate-900"
-                  value={formData.contactName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, contactName: e.target.value })
-                  }
+                  value={formData.contact_name}
+                  onChange={handleInputChange}
+                  placeholder="John Doe"
+                  required
                 />
               </div>
+
+              {/* Office Name */}
+              <div className="space-y-4">
+                <label className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">
+                  Office Name
+                </label>
+                <input
+                  type="text"
+                  name="office_name"
+                  className="w-full bg-transparent border-b-2 border-slate-200 py-4 focus:border-slate-900 outline-none transition-colors font-bold text-slate-900"
+                  value={formData.office_name}
+                  onChange={handleInputChange}
+                  placeholder="Your Company"
+                  required
+                />
+              </div>
+
+              {/* Work Email */}
               <div className="space-y-4">
                 <label className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">
                   Work Email
                 </label>
                 <input
-                  required
                   type="email"
+                  name="work_email"
                   className="w-full bg-transparent border-b-2 border-slate-200 py-4 focus:border-slate-900 outline-none transition-colors font-bold text-slate-900"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
+                  value={formData.work_email}
+                  onChange={handleInputChange}
+                  placeholder="john@company.com"
+                  required
                 />
               </div>
+
+              {/* Phone */}
               <div className="space-y-4">
                 <label className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">
                   Phone
                 </label>
                 <input
-                  required
                   type="tel"
+                  name="phone"
                   className="w-full bg-transparent border-b-2 border-slate-200 py-4 focus:border-slate-900 outline-none transition-colors font-bold text-slate-900"
                   value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
+                  onChange={handleInputChange}
+                  placeholder="+1 (555) 123-4567"
+                  required
                 />
               </div>
+
+              {/* Team Size */}
               <div className="space-y-4">
                 <label className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">
                   Team Size
                 </label>
                 <input
-                  required
                   type="number"
-                  className={`w-full bg-transparent border-b-2 ${error ? "border-red-500" : "border-slate-200"} py-4 focus:border-slate-900 outline-none transition-colors font-bold text-slate-900`}
-                  value={formData.employees}
-                  onChange={(e) =>
-                    setFormData({ ...formData, employees: e.target.value })
-                  }
+                  name="team_size"
+                  className="w-full bg-transparent border-b-2 border-slate-200 py-4 focus:border-slate-900 outline-none transition-colors font-bold text-slate-900"
+                  value={formData.team_size}
+                  onChange={handleInputChange}
+                  placeholder="50"
+                  min="1"
+                  required
                 />
-                {error && (
-                  <p className="text-[10px] text-red-500 font-black mt-2">
-                    {error}
-                  </p>
-                )}
               </div>
+
+              {/* Preferred Plan */}
               <div className="space-y-4">
                 <label className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">
                   Preferred Plan
                 </label>
                 <div className="relative group">
                   <select
+                    name="preferred_plan"
                     className="w-full bg-transparent border-b-2 border-slate-200 py-4 focus:border-slate-900 outline-none transition-colors font-bold text-slate-900 appearance-none cursor-pointer pr-10"
-                    value={formData.plan}
-                    onChange={(e) =>
-                      setFormData({ ...formData, plan: e.target.value })
-                    }
+                    value={formData.preferred_plan}
+                    onChange={handleInputChange}
+                    required
                   >
-                    <option value="signature">Signature Plan</option>
-                    <option value="plant-based">Plant Based Plan</option>
-                    <option value="custom">Custom / Mixed Plan</option>
+                    <option value="Plant Based $14.99">
+                      Plant Based - $14.99/meal
+                    </option>
+                    <option value="Signature $16.99">
+                      Signature - $16.99/meal
+                    </option>
                   </select>
                   <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none group-hover:translate-y-[-40%] transition-transform">
                     <ChevronDown size={18} className="text-slate-900" />
                   </div>
                 </div>
               </div>
+
+              {/* Message */}
               <div className="md:col-span-2 space-y-4">
                 <label className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">
-                  Message
+                  Message <span className="text-slate-300">(Optional)</span>
                 </label>
                 <textarea
+                  name="message"
                   rows={2}
                   className="w-full bg-transparent border-b-2 border-slate-200 py-4 focus:border-slate-900 outline-none transition-colors font-bold text-slate-900"
                   value={formData.message}
-                  onChange={(e) =>
-                    setFormData({ ...formData, message: e.target.value })
-                  }
+                  onChange={handleInputChange}
+                  placeholder="Tell us about your preferences..."
                 ></textarea>
               </div>
+
+              {/* Submit Button */}
               <div className="md:col-span-2 pt-10">
-                <button type="submit" className="btn-edgy w-full text-sm">
-                  Submit Inquiry
+                <button
+                  type="submit"
+                  disabled={formStatus.type === "loading"}
+                  className={`btn-edgy w-full text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+                    formStatus.type === "loading" ? "opacity-50" : ""
+                  }`}
+                >
+                  {formStatus.type === "loading" ? (
+                    <>
+                      <Loader className="w-4 h-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Submit Inquiry"
+                  )}
                 </button>
               </div>
             </form>
