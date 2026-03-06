@@ -1,3 +1,5 @@
+console.log('App.tsx is loading')
+
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -19,16 +21,32 @@ import {
   Loader,
 } from "lucide-react";
 import emailjs from "@emailjs/browser";
+import { client } from './lib/sanityClient'
+import { urlFor } from './lib/imageBuilder'
 
 // Initialize EmailJS
 emailjs.init(import.meta.env.VITE_EMAIL_PUBLIC_KEY);
 
 // --- Types ---
 interface Dish {
-  id: number;
+  id: string;
   name: string;
   description: string;
-  image: string;
+  image: any;
+  planId: string;
+  planName: string;
+}
+
+interface Plan {
+  _id: string;
+  name: string;
+  tagline: string;
+  price: string;
+  priceLabel: string;
+  features: string[];
+  buttonText: string;
+  backgroundColor: string;
+  menuItems?: Dish[];
 }
 
 // --- Components ---
@@ -36,7 +54,6 @@ interface Dish {
 interface LogoProps {
   className?: string;
   variant?: "header" | "footer";
-  // explicit color override; if omitted we fall back to the variant default
   color?: "blue" | "white";
 }
 
@@ -60,7 +77,6 @@ const Logo = ({ className = "", variant = "header", color }: LogoProps) => {
     );
   }
 
-  // footer uses white logo as mask so color can be applied via text-* utilities
   return (
     <a
       href="#"
@@ -130,7 +146,6 @@ const Header = () => {
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 overflow-visible ${isScrolled ? "bg-white border-b-2 border-slate-900 pt-3 pb-6 sm:pt-4 sm:pb-8" : "bg-transparent py-5"}`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-12 flex items-center justify-between gap-4 sm:gap-0">
-        {/* add a little extra top padding so the logo isn't pressed against the edge */}
         <Logo
           variant="header"
           className={`w-auto mb-1 sm:mb-2 transition-all duration-300 ${isScrolled ? "h-12 sm:h-16 md:h-20" : "h-16 sm:h-20 md:h-24"}`}
@@ -349,7 +364,7 @@ const DishCard = ({
   >
     <div className="relative aspect-square overflow-hidden mb-6 border-2 border-slate-900">
       <img
-        src={dish.image}
+        src={urlFor(dish.image).url()}
         alt={dish.name}
         className="w-full h-full object-cover transition-all duration-500"
         referrerPolicy="no-referrer"
@@ -393,7 +408,7 @@ const DishModal = ({ dish, onClose }: { dish: Dish; onClose: () => void }) => (
       <div className="grid md:grid-cols-2 gap-6 sm:gap-8 md:gap-12 items-start md:items-center">
         <div className="border-2 sm:border-4 border-slate-900 aspect-square overflow-hidden">
           <img
-            src={dish.image}
+            src={urlFor(dish.image).url()}
             alt={dish.name}
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
@@ -427,82 +442,72 @@ const DishModal = ({ dish, onClose }: { dish: Dish; onClose: () => void }) => (
 
 const MenuSection = () => {
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [menuItems, setMenuItems] = useState<Dish[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const plantBased: Dish[] = [
-    {
-      id: 1,
-      name: "Quinoa Harvest",
-      description: "Roasted sweet potatoes, kale, chickpeas.",
-      image:
-        "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=600",
-    },
-    {
-      id: 2,
-      name: "Mushroom Risotto",
-      description: "Creamy arborio rice with wild mushrooms.",
-      image:
-        "https://images.unsplash.com/photo-1476124369491-e7addf5db371?auto=format&fit=crop&q=80&w=600",
-    },
-    {
-      id: 3,
-      name: "Thai Green Curry",
-      description: "Spicy coconut curry with vegetables.",
-      image:
-        "https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?auto=format&fit=crop&q=80&w=600",
-    },
-    {
-      id: 4,
-      name: "Lentil Shepherd",
-      description: "Hearty lentils with sweet potato mash.",
-      image:
-        "https://images.unsplash.com/photo-1543339308-43e59d6b73a6?auto=format&fit=crop&q=80&w=600",
-    },
-    {
-      id: 5,
-      name: "Zucchini Noodles",
-      description: "Fresh zoodles with basil pesto.",
-      image:
-        "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&q=80&w=600",
-    },
-  ];
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        // Fetch all plans
+        const plansData = await client.fetch(`
+          *[_type == "plan"] | order(name asc) {
+            _id,
+            name,
+            tagline,
+            price,
+            priceLabel,
+            features,
+            buttonText,
+            backgroundColor
+          }
+        `);
+        
+        // Fetch all menu items with their plan reference
+        const menuData = await client.fetch(`
+          *[_type == "menuItem"] {
+            _id,
+            name,
+            description,
+            image,
+            plan->{
+              _id,
+              name
+            }
+          }
+        `);
+        
+        // Transform menu items to include plan info
+        const transformedMenuItems = menuData.map((item: any) => ({
+          id: item._id,
+          name: item.name,
+          description: item.description,
+          image: item.image,
+          planId: item.plan?._id,
+          planName: item.plan?.name
+        }));
+        
+        setPlans(plansData);
+        setMenuItems(transformedMenuItems);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  const signature: Dish[] = [
-    {
-      id: 6,
-      name: "Pan-Seared Salmon",
-      description: "Atlantic salmon with asparagus.",
-      image:
-        "https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&q=80&w=600",
-    },
-    {
-      id: 7,
-      name: "Beef Short Rib",
-      description: "Slow-cooked beef with creamy polenta.",
-      image:
-        "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=600",
-    },
-    {
-      id: 8,
-      name: "Chicken Saltimbocca",
-      description: "Prosciutto-wrapped chicken.",
-      image:
-        "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&q=80&w=600",
-    },
-    {
-      id: 9,
-      name: "Truffle Pasta",
-      description: "Handmade fettuccine with truffle.",
-      image:
-        "https://images.unsplash.com/photo-1473093226795-af9932fe5856?auto=format&fit=crop&q=80&w=600",
-    },
-    {
-      id: 10,
-      name: "Grilled Lamb",
-      description: "Herb-crusted lamb with root vegetables.",
-      image:
-        "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&q=80&w=600",
-    },
-  ];
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <section id="menu" className="py-32 bg-white border-b-2 border-slate-900">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 text-center">
+          Loading menu...
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="menu" className="py-32 bg-white border-b-2 border-slate-900">
@@ -524,39 +529,31 @@ const MenuSection = () => {
         </div>
 
         <div className="space-y-40">
-          <div>
-            <div className="flex items-center gap-10 mb-16">
-              <h3 className="text-4xl font-serif text-slate-900">
-                Plant Based
-              </h3>
-              <div className="h-1 flex-grow bg-slate-900" />
-            </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-8">
-              {plantBased.map((dish) => (
-                <DishCard
-                  key={dish.id}
-                  dish={dish}
-                  onClick={() => setSelectedDish(dish)}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center gap-10 mb-16">
-              <h3 className="text-4xl font-serif text-slate-900">Signature</h3>
-              <div className="h-1 flex-grow bg-slate-900" />
-            </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-8">
-              {signature.map((dish) => (
-                <DishCard
-                  key={dish.id}
-                  dish={dish}
-                  onClick={() => setSelectedDish(dish)}
-                />
-              ))}
-            </div>
-          </div>
+          {plans.map((plan) => {
+            const planMenuItems = menuItems.filter(item => item.planId === plan._id);
+            
+            if (planMenuItems.length === 0) return null;
+            
+            return (
+              <div key={plan._id}>
+                <div className="flex items-center gap-10 mb-16">
+                  <h3 className="text-4xl font-serif text-slate-900">
+                    {plan.name}
+                  </h3>
+                  <div className="h-1 flex-grow bg-slate-900" />
+                </div>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-8">
+                  {planMenuItems.map((dish) => (
+                    <DishCard
+                      key={dish.id}
+                      dish={dish}
+                      onClick={() => setSelectedDish(dish)}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -573,6 +570,45 @@ const MenuSection = () => {
 };
 
 const Pricing = () => {
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchPlans() {
+      try {
+        const data = await client.fetch(`
+          *[_type == "plan"] | order(name asc) {
+            _id,
+            name,
+            tagline,
+            price,
+            priceLabel,
+            features,
+            buttonText,
+            backgroundColor
+          }
+        `);
+        setPlans(data);
+      } catch (error) {
+        console.error('Error fetching plans:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchPlans();
+  }, []);
+
+  if (loading) {
+    return (
+      <section id="pricing" className="py-32 bg-white border-b-2 border-slate-900">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 text-center">
+          Loading plans...
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       id="pricing"
@@ -580,97 +616,72 @@ const Pricing = () => {
     >
       <div className="max-w-7xl mx-auto px-6 md:px-12">
         <div className="grid lg:grid-cols-2 gap-0 border-2 border-slate-900">
-          <motion.div
-            whileHover={{ scale: 1.03 }}
-            transition={{ duration: 0.3 }}
-            className="p-8 sm:p-12 md:p-16 border-b-2 lg:border-b-0 lg:border-r-2 border-slate-900 hover:bg-slate-50 transition-all"
-          >
-            <div className="flex flex-col sm:flex-row justify-between items-start mb-16 gap-8">
-              <div>
-                <h3 className="text-3xl sm:text-4xl font-serif text-slate-900 mb-4 whitespace-nowrap">
-                  Plant Based
-                </h3>
-                <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black">
-                  The Conscious Choice
-                </p>
-              </div>
-              <div className="text-right">
-                <span className="text-4xl sm:text-5xl font-serif text-slate-900">
-                  $16.49
-                </span>
-                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">
-                  Per Meal
-                </p>
-              </div>
-            </div>
-            <ul className="space-y-8 mb-16">
-              {[
-                "Vegetarian meal options",
-                "Chef-curated special recipes",
-                "Eco-friendly packaging",
-                "Consistent weekly menus",
-              ].map((item, i) => (
-                <li
-                  key={i}
-                  className="flex items-center gap-6 text-xs font-bold uppercase tracking-widest text-slate-600"
-                >
-                  <div className="w-2 h-2 bg-slate-900" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <a
-              href="#subscribe"
-              className="btn-edgy w-full text-center block text-sm py-5"
+          {plans.map((plan, index) => (
+            <motion.div
+              key={plan._id}
+              whileHover={{ scale: 1.03 }}
+              transition={{ duration: 0.3 }}
+              className={`p-8 sm:p-12 md:p-16 ${
+                index === 0 && plans.length > 1 ? 'border-b-2 lg:border-b-0 lg:border-r-2 border-slate-900' : ''
+              } ${
+                plan.backgroundColor === 'dark' 
+                  ? 'bg-slate-900 text-white hover:bg-black' 
+                  : 'hover:bg-slate-50'
+              } transition-all`}
             >
-              Select Plan
-            </a>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ scale: 1.03 }}
-            transition={{ duration: 0.3 }}
-            className="p-8 sm:p-12 md:p-16 bg-slate-900 text-white hover:bg-black transition-all"
-          >
-            <div className="flex flex-col sm:flex-row justify-between items-start mb-16 gap-8">
-              <div>
-                <h3 className="text-3xl sm:text-4xl font-serif mb-4 whitespace-nowrap">
-                  Signature
-                </h3>
-                <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black">
-                  The Executive Choice
-                </p>
+              <div className="flex flex-col sm:flex-row justify-between items-start mb-16 gap-8">
+                <div>
+                  <h3 className={`text-3xl sm:text-4xl font-serif mb-4 whitespace-nowrap ${
+                    plan.backgroundColor === 'dark' ? 'text-white' : 'text-slate-900'
+                  }`}>
+                    {plan.name}
+                  </h3>
+                  <p className={`text-[10px] uppercase tracking-widest font-black ${
+                    plan.backgroundColor === 'dark' ? 'text-slate-500' : 'text-slate-400'
+                  }`}>
+                    {plan.tagline}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className={`text-4xl sm:text-5xl font-serif ${
+                    plan.backgroundColor === 'dark' ? 'text-white' : 'text-slate-900'
+                  }`}>
+                    {plan.price}
+                  </span>
+                  <p className={`text-[10px] uppercase font-black tracking-widest ${
+                    plan.backgroundColor === 'dark' ? 'text-slate-500' : 'text-slate-400'
+                  }`}>
+                    {plan.priceLabel}
+                  </p>
+                </div>
               </div>
-              <div className="text-right">
-                <span className="text-4xl sm:text-5xl font-serif">$18.99</span>
-                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">
-                  Per Meal
-                </p>
-              </div>
-            </div>
-            <ul className="space-y-8 mb-16">
-              {[
-                "Premium proteins included",
-                "Chef-curated special recipes",
-                "Eco-friendly packaging",
-                "Consistent weekly menus",
-              ].map((item, i) => (
-                <li
-                  key={i}
-                  className="flex items-center gap-6 text-xs font-bold uppercase tracking-widest text-slate-400"
-                >
-                  <div className="w-2 h-2 bg-white" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <a
-              href="#subscribe"
-              className="px-8 py-5 font-black uppercase tracking-[0.3em] transition-all duration-300 bg-white text-slate-900 hover:bg-slate-200 w-full text-center block text-sm border-2 border-white"
-            >
-              Select Plan
-            </a>
-          </motion.div>
+              <ul className="space-y-8 mb-16">
+                {plan.features.map((feature, i) => (
+                  <li
+                    key={i}
+                    className={`flex items-center gap-6 text-xs font-bold uppercase tracking-widest ${
+                      plan.backgroundColor === 'dark' ? 'text-slate-400' : 'text-slate-600'
+                    }`}
+                  >
+                    <div className={`w-2 h-2 ${
+                      plan.backgroundColor === 'dark' ? 'bg-white' : 'bg-slate-900'
+                    }`} />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href="#subscribe"
+                className={`${
+                  plan.backgroundColor === 'dark'
+                    ? 'px-8 py-5 font-black uppercase tracking-[0.3em] transition-all duration-300 bg-white text-slate-900 hover:bg-slate-200 w-full text-center block text-sm border-2 border-white'
+                    : 'btn-edgy w-full text-center block text-sm py-5'
+                }`}
+              >
+                {plan.buttonText}
+              </a>
+            </motion.div>
+          ))}
         </div>
       </div>
     </section>
@@ -679,6 +690,7 @@ const Pricing = () => {
 
 const SubscriptionForm = () => {
   const formRef = useRef<HTMLFormElement>(null);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [formStatus, setFormStatus] = useState<{
     type: "idle" | "loading" | "success" | "error";
     message: string;
@@ -692,9 +704,33 @@ const SubscriptionForm = () => {
     work_email: "",
     phone: "",
     team_size: "",
-    preferred_plan: "Plant Based $14.99",
+    preferred_plan: "",
     message: "",
   });
+
+  useEffect(() => {
+    async function fetchPlans() {
+      try {
+        const data = await client.fetch(`
+          *[_type == "plan"] | order(name asc) {
+            _id,
+            name,
+            price
+          }
+        `);
+        setPlans(data);
+        if (data.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            preferred_plan: `${data[0].name} ${data[0].price}`
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching plans for form:', error);
+      }
+    }
+    fetchPlans();
+  }, []);
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -711,7 +747,6 @@ const SubscriptionForm = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Validation
     if (
       !formData.contact_name ||
       !formData.work_email ||
@@ -750,14 +785,13 @@ const SubscriptionForm = () => {
           message: "Subscription request sent successfully!",
         });
 
-        // Clear form
         setFormData({
           contact_name: "",
           office_name: "",
           work_email: "",
           phone: "",
           team_size: "",
-          preferred_plan: "Plant Based $14.99",
+          preferred_plan: plans.length > 0 ? `${plans[0].name} ${plans[0].price}` : "",
           message: "",
         });
 
@@ -765,7 +799,6 @@ const SubscriptionForm = () => {
           formRef.current.reset();
         }
 
-        // Clear success message after 5 seconds
         setTimeout(() => {
           setFormStatus({
             type: "idle",
@@ -783,7 +816,6 @@ const SubscriptionForm = () => {
             : "Failed to send subscription request. Please try again.",
       });
 
-      // Clear error message after 5 seconds
       setTimeout(() => {
         setFormStatus({
           type: "idle",
@@ -843,7 +875,6 @@ const SubscriptionForm = () => {
           </div>
 
           <div className="lg:col-span-7 card-edgy">
-            {/* Status Messages */}
             {formStatus.type !== "idle" && (
               <div
                 className={`p-6 mb-6 border-l-4 ${
@@ -903,7 +934,6 @@ const SubscriptionForm = () => {
               onSubmit={handleSubmit}
               className="grid md:grid-cols-2 gap-12"
             >
-              {/* Contact Name */}
               <div className="space-y-4">
                 <label className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">
                   Contact Name
@@ -919,7 +949,6 @@ const SubscriptionForm = () => {
                 />
               </div>
 
-              {/* Office Name */}
               <div className="space-y-4">
                 <label className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">
                   Office Name
@@ -935,7 +964,6 @@ const SubscriptionForm = () => {
                 />
               </div>
 
-              {/* Work Email */}
               <div className="space-y-4">
                 <label className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">
                   Work Email
@@ -951,7 +979,6 @@ const SubscriptionForm = () => {
                 />
               </div>
 
-              {/* Phone */}
               <div className="space-y-4">
                 <label className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">
                   Phone
@@ -967,7 +994,6 @@ const SubscriptionForm = () => {
                 />
               </div>
 
-              {/* Team Size */}
               <div className="space-y-4">
                 <label className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">
                   Team Size
@@ -984,7 +1010,6 @@ const SubscriptionForm = () => {
                 />
               </div>
 
-              {/* Preferred Plan */}
               <div className="space-y-4">
                 <label className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">
                   Preferred Plan
@@ -997,12 +1022,11 @@ const SubscriptionForm = () => {
                     onChange={handleInputChange}
                     required
                   >
-                    <option value="Plant Based $14.99">
-                      Plant Based - $14.99/meal
-                    </option>
-                    <option value="Signature $16.99">
-                      Signature - $16.99/meal
-                    </option>
+                    {plans.map((plan) => (
+                      <option key={plan._id} value={`${plan.name} ${plan.price}`}>
+                        {plan.name} - {plan.price}/meal
+                      </option>
+                    ))}
                   </select>
                   <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none group-hover:translate-y-[-40%] transition-transform">
                     <ChevronDown size={18} className="text-slate-900" />
@@ -1010,7 +1034,6 @@ const SubscriptionForm = () => {
                 </div>
               </div>
 
-              {/* Message */}
               <div className="md:col-span-2 space-y-4">
                 <label className="text-[10px] uppercase tracking-[0.3em] font-black text-slate-400">
                   Message <span className="text-slate-300">(Optional)</span>
@@ -1025,7 +1048,6 @@ const SubscriptionForm = () => {
                 ></textarea>
               </div>
 
-              {/* Submit Button */}
               <div className="md:col-span-2 pt-10">
                 <button
                   type="submit"

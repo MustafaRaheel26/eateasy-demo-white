@@ -1,6 +1,7 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { Mail, AlertCircle, CheckCircle, Loader } from "lucide-react";
 import emailjs from "@emailjs/browser";
+import { useSanityQuery } from "./hooks/useSanityQuery";
 
 // Initialize EmailJS
 emailjs.init(import.meta.env.VITE_EMAIL_PUBLIC_KEY);
@@ -21,12 +22,62 @@ interface FormStatus {
   message: string;
 }
 
+interface Plan {
+  _id: string;
+  title: string;
+  price: number;
+}
+
 export const SubscriptionForm: React.FC = () => {
   const formRef = useRef<HTMLFormElement>(null);
   const [formStatus, setFormStatus] = useState<FormStatus>({
     type: "idle",
     message: "",
   });
+  const [planOptions, setPlanOptions] = useState<
+    Array<{ value: string; label: string }>
+  >([]);
+
+  const { data: plans } = useSanityQuery<Plan[]>(
+    `*[_type == "plan"] | order(price asc){title, price, description}`,
+  );
+
+  const cardItems =
+    plans && plans.length > 0
+      ? plans
+      : [
+          {
+            title: "Plant Based",
+            price: 14.99,
+            description:
+              "Fresh vegetables, grains, and legumes. Perfect for vegans and health-conscious customers.",
+          },
+          {
+            title: "Signature",
+            price: 16.99,
+            description:
+              "Our premium selection with lean proteins, fresh produce, and gourmet preparations.",
+          },
+        ];
+
+  const fallbackPlanOptions = [
+    { value: "Plant Based $14.99", label: "Plant Based - $14.99/meal" },
+    { value: "Signature $17.99", label: "Signature - $17.99/meal" },
+  ];
+
+  useEffect(() => {
+    if (plans && plans.length > 0) {
+      setPlanOptions(
+        plans.map((p) => ({
+          value: `${p.title} $${p.price.toFixed(2)}`,
+          label: `${p.title} - $${p.price.toFixed(2)}/meal`,
+        })),
+      );
+    } else {
+      setPlanOptions(fallbackPlanOptions);
+    }
+  }, [plans]);
+
   const [formData, setFormData] = useState<FormData>({
     name: "",
     company: "",
@@ -34,9 +85,16 @@ export const SubscriptionForm: React.FC = () => {
     email: "",
     phone: "",
     employees: "",
-    plan: "Plant Based $14.99",
+    plan: fallbackPlanOptions[0].value,
     message: "",
   });
+
+  // when plan options change, set default if empty
+  useEffect(() => {
+    if (!formData.plan && planOptions.length > 0) {
+      setFormData((prev) => ({ ...prev, plan: planOptions[0].value }));
+    }
+  }, [planOptions]);
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -101,7 +159,7 @@ export const SubscriptionForm: React.FC = () => {
           email: "",
           phone: "",
           employees: "",
-          plan: "Plant Based $14.99",
+          plan: planOptions[0]?.value || fallbackPlanOptions[0].value,
           message: "",
         });
 
@@ -348,12 +406,11 @@ export const SubscriptionForm: React.FC = () => {
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition bg-white cursor-pointer"
                 required
               >
-                <option value="Plant Based $14.99">
-                  Plant Based - $14.99/meal
-                </option>
-                <option value="Signature $16.99">
-                  Signature - $16.99/meal
-                </option>
+                {planOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -407,29 +464,31 @@ export const SubscriptionForm: React.FC = () => {
           </form>
         </div>
 
-        {/* Info Cards */}
+        {/* Info Cards (dynamic) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-12">
-          <div className="bg-white rounded-lg p-6 shadow-md border-l-4 border-emerald-500">
-            <h3 className="font-semibold text-slate-900 mb-2">
-              Plant Based Plan
-            </h3>
-            <p className="text-slate-600 text-sm">
-              Fresh vegetables, grains, and legumes. Perfect for vegans and
-              health-conscious customers.
-            </p>
-            <p className="text-emerald-600 font-bold mt-3">$14.99/meal</p>
-          </div>
-
-          <div className="bg-white rounded-lg p-6 shadow-md border-l-4 border-teal-500">
-            <h3 className="font-semibold text-slate-900 mb-2">
-              Signature Plan
-            </h3>
-            <p className="text-slate-600 text-sm">
-              Our premium selection with lean proteins, fresh produce, and
-              gourmet preparations.
-            </p>
-            <p className="text-teal-600 font-bold mt-3">$16.99/meal</p>
-          </div>
+          {cardItems.map((p) => {
+            const colorClass = p.title.toLowerCase().includes("plant")
+              ? "text-emerald-600"
+              : "text-teal-600";
+            const borderColor = p.title.toLowerCase().includes("plant")
+              ? "#10b981"
+              : "#14b8a6";
+            return (
+              <div
+                key={p.title}
+                className="bg-white rounded-lg p-6 shadow-md border-l-4"
+                style={{ borderColor }}
+              >
+                <h3 className="font-semibold text-slate-900 mb-2">
+                  {p.title} Plan
+                </h3>
+                <p className="text-slate-600 text-sm">{p.description}</p>
+                <p className={`font-bold mt-3 ${colorClass}`}>
+                  ${p.price.toFixed(2)}/meal
+                </p>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
