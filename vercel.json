@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/studio/:path*",
+      "destination": "https://eat-easy-menu-hqqclaqee-mustafas-projects-248a657e.vercel.app/:path*"
+    }
+  ]
+}
