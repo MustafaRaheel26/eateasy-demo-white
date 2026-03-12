@@ -1,4 +1,4 @@
-console.log('App.tsx is loading')
+console.log("App.tsx is loading");
 
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
@@ -21,8 +21,8 @@ import {
   Loader,
 } from "lucide-react";
 import emailjs from "@emailjs/browser";
-import { client } from './lib/sanityClient'
-import { urlFor } from './lib/imageBuilder'
+import { client } from "./lib/sanityClient";
+import { urlFor } from "./lib/imageBuilder";
 
 // Initialize EmailJS
 emailjs.init(import.meta.env.VITE_EMAIL_PUBLIC_KEY);
@@ -422,18 +422,8 @@ const DishModal = ({ dish, onClose }: { dish: Dish; onClose: () => void }) => (
             {dish.name}
           </h2>
           <p className="text-xs sm:text-sm md:text-lg text-slate-600 mb-6 sm:mb-10 leading-relaxed font-medium border-l-2 sm:border-l-4 border-slate-900 pl-3 sm:pl-6">
-            {dish.description} This dish is prepared fresh daily using locally
-            sourced ingredients, ensuring a restaurant-quality experience right
-            in your office.
+            {dish.description}
           </p>
-          <div className="flex flex-wrap gap-2 sm:gap-6">
-            <div className="px-2 sm:px-4 py-1 sm:py-2 border border-slate-900 sm:border-2 font-black text-[7px] sm:text-[10px] uppercase tracking-widest">
-              Fresh Daily
-            </div>
-            <div className="px-2 sm:px-4 py-1 sm:py-2 border border-slate-900 sm:border-2 font-black text-[7px] sm:text-[10px] uppercase tracking-widest">
-              Chef Curated
-            </div>
-          </div>
         </div>
       </div>
     </motion.div>
@@ -462,7 +452,7 @@ const MenuSection = () => {
             backgroundColor
           }
         `);
-        
+
         // Fetch all menu items with their plan reference
         const menuData = await client.fetch(`
           *[_type == "menuItem"] {
@@ -476,7 +466,7 @@ const MenuSection = () => {
             }
           }
         `);
-        
+
         // Transform menu items to include plan info
         const transformedMenuItems = menuData.map((item: any) => ({
           id: item._id,
@@ -484,13 +474,13 @@ const MenuSection = () => {
           description: item.description,
           image: item.image,
           planId: item.plan?._id,
-          planName: item.plan?.name
+          planName: item.plan?.name,
         }));
-        
+
         setPlans(plansData);
         setMenuItems(transformedMenuItems);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
@@ -530,10 +520,12 @@ const MenuSection = () => {
 
         <div className="space-y-40">
           {plans.map((plan) => {
-            const planMenuItems = menuItems.filter(item => item.planId === plan._id);
-            
+            const planMenuItems = menuItems.filter(
+              (item) => item.planId === plan._id,
+            );
+
             if (planMenuItems.length === 0) return null;
-            
+
             return (
               <div key={plan._id}>
                 <div className="flex items-center gap-10 mb-16">
@@ -590,7 +582,7 @@ const Pricing = () => {
         `);
         setPlans(data);
       } catch (error) {
-        console.error('Error fetching plans:', error);
+        console.error("Error fetching plans:", error);
       } finally {
         setLoading(false);
       }
@@ -601,7 +593,10 @@ const Pricing = () => {
 
   if (loading) {
     return (
-      <section id="pricing" className="py-32 bg-white border-b-2 border-slate-900">
+      <section
+        id="pricing"
+        className="py-32 bg-white border-b-2 border-slate-900"
+      >
         <div className="max-w-7xl mx-auto px-6 md:px-12 text-center">
           Loading plans...
         </div>
@@ -622,35 +617,53 @@ const Pricing = () => {
               whileHover={{ scale: 1.03 }}
               transition={{ duration: 0.3 }}
               className={`p-8 sm:p-12 md:p-16 ${
-                index === 0 && plans.length > 1 ? 'border-b-2 lg:border-b-0 lg:border-r-2 border-slate-900' : ''
+                index === 0 && plans.length > 1
+                  ? "border-b-2 lg:border-b-0 lg:border-r-2 border-slate-900"
+                  : ""
               } ${
-                plan.backgroundColor === 'dark' 
-                  ? 'bg-slate-900 text-white hover:bg-black' 
-                  : 'hover:bg-slate-50'
+                plan.backgroundColor === "dark"
+                  ? "bg-slate-900 text-white hover:bg-black"
+                  : "hover:bg-slate-50"
               } transition-all`}
             >
               <div className="flex flex-col sm:flex-row justify-between items-start mb-16 gap-8">
                 <div>
-                  <h3 className={`text-3xl sm:text-4xl font-serif mb-4 whitespace-nowrap ${
-                    plan.backgroundColor === 'dark' ? 'text-white' : 'text-slate-900'
-                  }`}>
+                  <h3
+                    className={`text-3xl sm:text-4xl font-serif mb-4 whitespace-nowrap ${
+                      plan.backgroundColor === "dark"
+                        ? "text-white"
+                        : "text-slate-900"
+                    }`}
+                  >
                     {plan.name}
                   </h3>
-                  <p className={`text-[10px] uppercase tracking-widest font-black ${
-                    plan.backgroundColor === 'dark' ? 'text-slate-500' : 'text-slate-400'
-                  }`}>
+                  <p
+                    className={`text-[10px] uppercase tracking-widest font-black ${
+                      plan.backgroundColor === "dark"
+                        ? "text-slate-500"
+                        : "text-slate-400"
+                    }`}
+                  >
                     {plan.tagline}
                   </p>
                 </div>
                 <div className="text-right">
-                  <span className={`text-4xl sm:text-5xl font-serif ${
-                    plan.backgroundColor === 'dark' ? 'text-white' : 'text-slate-900'
-                  }`}>
+                  <span
+                    className={`text-4xl sm:text-5xl font-serif ${
+                      plan.backgroundColor === "dark"
+                        ? "text-white"
+                        : "text-slate-900"
+                    }`}
+                  >
                     {plan.price}
                   </span>
-                  <p className={`text-[10px] uppercase font-black tracking-widest ${
-                    plan.backgroundColor === 'dark' ? 'text-slate-500' : 'text-slate-400'
-                  }`}>
+                  <p
+                    className={`text-[10px] uppercase font-black tracking-widest ${
+                      plan.backgroundColor === "dark"
+                        ? "text-slate-500"
+                        : "text-slate-400"
+                    }`}
+                  >
                     {plan.priceLabel}
                   </p>
                 </div>
@@ -660,12 +673,18 @@ const Pricing = () => {
                   <li
                     key={i}
                     className={`flex items-center gap-6 text-xs font-bold uppercase tracking-widest ${
-                      plan.backgroundColor === 'dark' ? 'text-slate-400' : 'text-slate-600'
+                      plan.backgroundColor === "dark"
+                        ? "text-slate-400"
+                        : "text-slate-600"
                     }`}
                   >
-                    <div className={`w-2 h-2 ${
-                      plan.backgroundColor === 'dark' ? 'bg-white' : 'bg-slate-900'
-                    }`} />
+                    <div
+                      className={`w-2 h-2 ${
+                        plan.backgroundColor === "dark"
+                          ? "bg-white"
+                          : "bg-slate-900"
+                      }`}
+                    />
                     {feature}
                   </li>
                 ))}
@@ -673,9 +692,9 @@ const Pricing = () => {
               <a
                 href="#subscribe"
                 className={`${
-                  plan.backgroundColor === 'dark'
-                    ? 'px-8 py-5 font-black uppercase tracking-[0.3em] transition-all duration-300 bg-white text-slate-900 hover:bg-slate-200 w-full text-center block text-sm border-2 border-white'
-                    : 'btn-edgy w-full text-center block text-sm py-5'
+                  plan.backgroundColor === "dark"
+                    ? "px-8 py-5 font-black uppercase tracking-[0.3em] transition-all duration-300 bg-white text-slate-900 hover:bg-slate-200 w-full text-center block text-sm border-2 border-white"
+                    : "btn-edgy w-full text-center block text-sm py-5"
                 }`}
               >
                 {plan.buttonText}
@@ -720,13 +739,13 @@ const SubscriptionForm = () => {
         `);
         setPlans(data);
         if (data.length > 0) {
-          setFormData(prev => ({
+          setFormData((prev) => ({
             ...prev,
-            preferred_plan: `${data[0].name} ${data[0].price}`
+            preferred_plan: `${data[0].name} ${data[0].price}`,
           }));
         }
       } catch (error) {
-        console.error('Error fetching plans for form:', error);
+        console.error("Error fetching plans for form:", error);
       }
     }
     fetchPlans();
@@ -791,7 +810,8 @@ const SubscriptionForm = () => {
           work_email: "",
           phone: "",
           team_size: "",
-          preferred_plan: plans.length > 0 ? `${plans[0].name} ${plans[0].price}` : "",
+          preferred_plan:
+            plans.length > 0 ? `${plans[0].name} ${plans[0].price}` : "",
           message: "",
         });
 
@@ -1023,7 +1043,10 @@ const SubscriptionForm = () => {
                     required
                   >
                     {plans.map((plan) => (
-                      <option key={plan._id} value={`${plan.name} ${plan.price}`}>
+                      <option
+                        key={plan._id}
+                        value={`${plan.name} ${plan.price}`}
+                      >
                         {plan.name} - {plan.price}/meal
                       </option>
                     ))}
@@ -1082,7 +1105,7 @@ const FAQ = () => {
     },
     {
       q: "What’s the difference between the plans?",
-      a: "Vegetarian ($16.49/meal): vegetarian options. With Protein ($18.99/meal): includes premium meats/proteins.",
+      a: "Signature meals include premium proteins like chicken, beef, seafood, or shrimp. Plant-Based meals are made entirely from vegetables, grains, legumes, and plant ingredients with no meat or seafood.",
     },
     {
       q: "How do we cancel or change the monthly plan?",
@@ -1094,7 +1117,7 @@ const FAQ = () => {
     },
     {
       q: "How does monthly subscription billing work?",
-      a: "Billed monthly for ~20 meals per person (5 meals/week: 2 on Monday, 3 on Wednesday). Plant Based $329.80/person/month + tax, Signature $379.80/person/month + tax.",
+      a: "Your subscription is billed once per month based on your selected meal plan. Payments are processed automatically each month.",
     },
   ];
 
